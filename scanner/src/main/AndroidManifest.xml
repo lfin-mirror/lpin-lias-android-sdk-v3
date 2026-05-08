@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 와이파이 스캐닝 -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- 와이파이, 위치 스캐닝 -->
+    <!-- Include only if your app benefits from precise location access. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Always include this permission -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- 비콘 스캐닝 -->
+    <!-- required for API 18 - 30 -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <!-- API 31+ -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <!-- 기지국 스캐닝 -->
+<!--    <uses-permission android:name="android.permission.READ_PHONE_STATE" />-->
+    <application>
+        <activity
+            android:name=".ScannerPermissionActivity"
+            android:screenOrientation="portrait" />
+    </application>
+</manifest>

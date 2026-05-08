@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="text_preview_image">이미지 미리보기</string>
+    <string name="text_scanning_space_feature">실내이미지를 인식중입니다</string>
+    <string name="text_screen_forward">화면을 정면으로 향하게 해 주세요.</string>
+</resources>

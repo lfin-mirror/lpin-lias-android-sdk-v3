@@ -1,0 +1,26 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'lpin-android-sdk'
+
+include ':face'
+include ':scanner'
+include ':space:pixel-matching'
+include ':space:authenticator'
+
+project(':scanner').projectDir = new File(rootDir, 'scanner')
+project(':space:pixel-matching').projectDir = new File(rootDir, 'space/pixel-matching')
+project(':space:authenticator').projectDir = new File(rootDir, 'space/authenticator')
