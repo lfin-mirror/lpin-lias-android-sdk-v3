@@ -2,6 +2,8 @@ package io.lpin.android.sdk.plac.scanner
 
 import android.content.Context
 import android.os.AsyncTask
+import io.lpin.android.sdk.licensing.LiasLicensedFeature
+import io.lpin.android.sdk.licensing.LiasLicenseGate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
@@ -17,6 +19,10 @@ class Scanner(
     private val listener: ScannerListener?,
     private val params: ScannerParams,
 ) {
+    init {
+        LiasLicenseGate.requireFeature(context.applicationContext, LiasLicensedFeature.SCANNER)
+    }
+
 
     private constructor(builder: Builder) : this(
         builder.context,

@@ -13,6 +13,7 @@ CONFIGURATION_LOWER=""
 MODULE_LABELS=(
   ":face"
   ":scanner"
+  ":licensing-core"
   ":space:pixel-matching"
   ":space:authenticator"
 )
@@ -20,6 +21,7 @@ MODULE_LABELS=(
 MODULE_OUTPUT_DIRS=(
   "face/build/outputs/aar"
   "scanner/build/outputs/aar"
+  "licensing-core/build/outputs/aar"
   "space/pixel-matching/build/outputs/aar"
   "space/authenticator/build/outputs/aar"
 )
@@ -27,6 +29,7 @@ MODULE_OUTPUT_DIRS=(
 MODULE_GRADLE_TASK_PREFIXES=(
   ":face:assemble"
   ":scanner:assemble"
+  ":licensing-core:assemble"
   ":space:pixel-matching:assemble"
   ":space:authenticator:assemble"
 )
@@ -46,6 +49,9 @@ module_artifact_prefix_for_label() {
       ;;
     ":scanner")
       printf 'lpin-android-sdk-scanner'
+      ;;
+    ":licensing-core")
+      printf 'lpin-android-sdk-licensing-core'
       ;;
     ":space:pixel-matching")
       printf 'lpin-android-sdk-space-pixel-matching'
@@ -68,6 +74,9 @@ module_build_gradle_path_for_label() {
       ;;
     ":scanner")
       printf '%s/scanner/build.gradle' "$REPO_ROOT"
+      ;;
+    ":licensing-core")
+      printf '%s/licensing-core/build.gradle' "$REPO_ROOT"
       ;;
     ":space:pixel-matching")
       printf '%s/space/pixel-matching/build.gradle' "$REPO_ROOT"

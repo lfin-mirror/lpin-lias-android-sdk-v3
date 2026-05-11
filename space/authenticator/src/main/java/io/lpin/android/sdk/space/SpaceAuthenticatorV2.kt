@@ -23,6 +23,9 @@ import io.lpin.android.sdk.face.LFaceCameraFragmentListener
 import io.lpin.android.sdk.face.core.ui.CameraFragment
 import io.lpin.android.sdk.face.extenstions.toBitmap
 import io.lpin.android.sdk.face.model.CameraFrameData
+import io.lpin.android.sdk.licensing.LiasLicensedFeature
+import io.lpin.android.sdk.licensing.LiasLicenseException
+import io.lpin.android.sdk.licensing.LiasLicenseGate
 import io.lpin.android.sdk.plac.scanner.WifiThrottlingData
 import io.lpin.android.sdk.space.databinding.ActivitySpaceAuthenticatorV2Binding
 import io.lpin.android.sdk.space.ml.validation.MLDetector
@@ -217,6 +220,13 @@ class SpaceAuthenticatorV2 : AppCompatActivity(), LFaceCameraFragmentListener {
         listener = listeners?.pop() ?: return finish()
         if (listeners?.size == 0) {
             listeners = null
+        }
+        try {
+            LiasLicenseGate.requireFeature(applicationContext, LiasLicensedFeature.SPACE)
+        } catch (exception: LiasLicenseException) {
+            listener.takePictureFailure(Constants.CLIENT_ERROR_SDK_INIT, exception.message ?: Constants.CLIENT_ERROR_SDK_MESSAGE)
+            finish()
+            return
         }
         binding = DataBindingUtil.setContentView(this, R.layout.activity_space_authenticator_v2)
         binding.lifecycleOwner = this
@@ -956,6 +966,12 @@ class SpaceAuthenticatorV2 : AppCompatActivity(), LFaceCameraFragmentListener {
             intent.putExtra(EXTRA_TIMEOUT, timeoutMs)
             if (listener == null) {
                 throw IllegalArgumentException("You must setSpaceAuthenticatorListener() on SpaceAuthenticator");
+            }
+            try {
+                LiasLicenseGate.requireFeature(context.applicationContext, LiasLicensedFeature.SPACE)
+            } catch (exception: LiasLicenseException) {
+                listener?.takePictureFailure(Constants.CLIENT_ERROR_SDK_INIT, exception.message ?: Constants.CLIENT_ERROR_SDK_MESSAGE)
+                return
             }
             // 사이즈가 큰 이미지를 처리하기 위해서
             try {

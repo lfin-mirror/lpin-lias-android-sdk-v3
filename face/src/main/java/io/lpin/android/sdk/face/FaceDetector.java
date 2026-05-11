@@ -15,6 +15,8 @@ import androidx.annotation.RequiresApi;
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
 import com.google.mlkit.vision.common.InputImage;
+import io.lpin.android.sdk.licensing.LiasLicensedFeature;
+import io.lpin.android.sdk.licensing.LiasLicenseGate;
 import com.google.mlkit.vision.face.FaceDetection;
 import com.google.mlkit.vision.face.FaceDetectorOptions;
 import com.google.mlkit.vision.face.FaceLandmark;
@@ -637,6 +639,7 @@ public class FaceDetector {
         }
 
         public FaceDetector build() {
+            LiasLicenseGate.requireFeature(context.getApplicationContext(), LiasLicensedFeature.FACE);
             return new FaceDetector(this);
         }
     }

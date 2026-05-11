@@ -1,6 +1,5 @@
 package io.lpin.android.sdk.space
 
-import android.os.Build
 import android.util.Base64
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborDecoder
@@ -65,19 +64,35 @@ fun featureEncoded(
             }
         }.build())
 
-        return try {
-            Base64.encodeToString(featureCborEncoded.toByteArray(), Base64.NO_WRAP)
-        } catch (ignore: Exception) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                java.util.Base64.getEncoder().encodeToString(featureCborEncoded.toByteArray())
-            } else {
-                Base64.encodeToString(featureCborEncoded.toByteArray(), Base64.NO_WRAP);
-            }
-        }
+        return encodeBase64(featureCborEncoded.toByteArray())
     } catch (e: Exception) {
         e.printStackTrace()
     }
     return null
+}
+
+private fun encodeBase64(value: ByteArray): String {
+    return try {
+        val encoderClass = Class.forName("java.util.Base64")
+        val getEncoder = encoderClass.getMethod("getEncoder")
+        val encoder = getEncoder.invoke(null)
+        val encodeToString = encoder.javaClass.getMethod("encodeToString", ByteArray::class.java)
+        encodeToString.invoke(encoder, value) as String
+    } catch (ignore: Exception) {
+        Base64.encodeToString(value, Base64.NO_WRAP)
+    }
+}
+
+private fun decodeBase64(value: String): ByteArray {
+    return try {
+        val decoderClass = Class.forName("java.util.Base64")
+        val getDecoder = decoderClass.getMethod("getDecoder")
+        val decoder = getDecoder.invoke(null)
+        val decode = decoder.javaClass.getMethod("decode", String::class.java)
+        decode.invoke(decoder, value) as ByteArray
+    } catch (ignore: Exception) {
+        Base64.decode(value, Base64.NO_WRAP)
+    }
 }
 
 fun featureDecoded(featureOriginal: String): SpaceFeature? {
@@ -87,15 +102,7 @@ fun featureDecoded(featureOriginal: String): SpaceFeature? {
         return null
     }
 
-    val featureCborEncoded = try {
-        Base64.decode(feature, Base64.NO_WRAP)
-    } catch (ignore: Exception) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            java.util.Base64.getDecoder().decode(feature)
-        } else {
-            Base64.decode(feature, Base64.NO_WRAP)
-        }
-    }
+    val featureCborEncoded = decodeBase64(feature)
     val items = CborDecoder(ByteArrayInputStream(featureCborEncoded)).decode()
     val featureMap = items[0] as Map
 

@@ -6,6 +6,8 @@ import android.os.Trace;
 import android.util.Log;
 
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
+import io.lpin.android.sdk.licensing.LiasLicensedFeature;
+import io.lpin.android.sdk.licensing.LiasLicenseGate;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -355,6 +357,7 @@ public class FaceRecognizer {
         }
 
         public FaceRecognizer build() {
+            LiasLicenseGate.requireFeature(context.getApplicationContext(), LiasLicensedFeature.FACE);
             String dbName;
             if (name == null)
                 dbName = DB_NAME;

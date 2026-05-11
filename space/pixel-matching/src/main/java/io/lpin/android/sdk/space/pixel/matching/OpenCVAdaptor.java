@@ -2,10 +2,14 @@ package io.lpin.android.sdk.space.pixel.matching;
 
 import android.graphics.Bitmap;
 
+import io.lpin.android.sdk.licensing.LiasApplicationContext;
+import io.lpin.android.sdk.licensing.LiasLicensedFeature;
+import io.lpin.android.sdk.licensing.LiasLicenseGate;
 import java.nio.ByteBuffer;
 
 public class OpenCVAdaptor {
     public OpenCVAdaptor() {
+        LiasLicenseGate.requireFeature(LiasApplicationContext.requireApplicationContext(), LiasLicensedFeature.PIXEL_MATCHING);
         System.loadLibrary("opencv-adapter-lib");
     }
 

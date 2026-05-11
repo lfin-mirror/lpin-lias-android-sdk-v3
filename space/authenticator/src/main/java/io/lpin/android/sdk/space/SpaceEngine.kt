@@ -4,12 +4,18 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import io.lpin.android.sdk.licensing.LiasLicensedFeature
+import io.lpin.android.sdk.licensing.LiasLicenseGate
 import org.pytorch.IValue
 import org.pytorch.Module
 import org.pytorch.torchvision.TensorImageUtils
 import java.io.File
 
 class SpaceEngine(val context: Context) {
+    init {
+        LiasLicenseGate.requireFeature(context.applicationContext, LiasLicensedFeature.SPACE)
+    }
+
     private lateinit var module: Module
 
     fun init() {

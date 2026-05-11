@@ -12,12 +12,17 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.SystemClock
 import android.util.Log
+import io.lpin.android.sdk.licensing.LiasLicensedFeature
+import io.lpin.android.sdk.licensing.LiasLicenseGate
 
 
 class WifiScannerImpl(
     private val context: Context,
     private val params: ScannerParams
 ) : WifiScanner {
+    init {
+        LiasLicenseGate.requireFeature(context.applicationContext, LiasLicensedFeature.SCANNER)
+    }
     private var wifiManager: WifiManager? = null
     private lateinit var wifiThrottlingData: WifiThrottlingData
     private var broadcastReceiver: ScanResultBroadcastReceiver? = null

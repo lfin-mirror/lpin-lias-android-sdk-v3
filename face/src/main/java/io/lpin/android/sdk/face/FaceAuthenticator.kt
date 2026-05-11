@@ -26,6 +26,9 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.marginTop
 import io.lpin.android.sdk.face.core.ui.CameraFragment
+import io.lpin.android.sdk.licensing.LiasLicensedFeature
+import io.lpin.android.sdk.licensing.LiasLicenseException
+import io.lpin.android.sdk.licensing.LiasLicenseGate
 import io.lpin.android.sdk.face.liveness.LivenessEyeBlink
 import io.lpin.android.sdk.face.model.CameraFrameData
 import kotlinx.coroutines.CoroutineScope
@@ -103,6 +106,13 @@ class FaceAuthenticator : AppCompatActivity(), LFaceCameraFragmentListener, Loca
         listener = listeners?.pop() ?: return finish()
         if (listeners?.isEmpty() == true) {
             listeners = null
+        }
+        try {
+            LiasLicenseGate.requireFeature(applicationContext, LiasLicensedFeature.FACE)
+        } catch (exception: LiasLicenseException) {
+            onFailure(Constants.CLIENT_ERROR_SDK_INIT, exception.message ?: Constants.CLIENT_ERROR_SDK_MESSAGE)
+            finish()
+            return
         }
         // 레이아웃 설정
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -803,14 +813,12 @@ class FaceAuthenticator : AppCompatActivity(), LFaceCameraFragmentListener, Loca
         fun run() {
             requireNotNull(type) { "You must setType() on FaceAuthenticator.Builder" }
             requireNotNull(listener) { "You must setListener() on FaceAuthenticator.Builder" }
-            // 라이센스 목록 받기
-            val allowLicense =
-                BuildConfig.ALLOW_LICENSE_PACKAGES.any { `package` -> `package` == context.applicationContext.packageName }
-            if (!allowLicense) {
-                // 라이센스가 없으면 라이브러리를 사용하지 못하도록 처리
+            try {
+                LiasLicenseGate.requireFeature(context.applicationContext, LiasLicensedFeature.FACE)
+            } catch (exception: LiasLicenseException) {
                 listener?.onFailure(
                     Constants.CLIENT_ERROR_SDK_INIT,
-                    Constants.CLIENT_ERROR_SDK_MESSAGE
+                    exception.message ?: Constants.CLIENT_ERROR_SDK_MESSAGE
                 )
                 return
             }

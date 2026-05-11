@@ -13,6 +13,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import io.lpin.android.sdk.licensing.LiasLicensedFeature
+import io.lpin.android.sdk.licensing.LiasLicenseGate
 import io.lpin.android.sdk.plac.scanner.ble.advertising.IBeacon
 import io.lpin.android.sdk.plac.scanner.ble.advertising.PayloadParser
 
@@ -22,6 +24,9 @@ class BeaconScannerImpl(
         val context: Context,
         private val params: ScannerParams
 ) : BeaconScanner {
+    init {
+        LiasLicenseGate.requireFeature(context.applicationContext, LiasLicensedFeature.SCANNER)
+    }
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var bluetoothLeScanner: BluetoothLeScanner? = null
 

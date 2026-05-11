@@ -8,6 +8,8 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.os.HandlerThread
+import io.lpin.android.sdk.licensing.LiasLicensedFeature
+import io.lpin.android.sdk.licensing.LiasLicenseGate
 import kotlin.jvm.Throws
 
 
@@ -16,6 +18,9 @@ class LocationScannerImpl(
     val context: Context,
     val params: ScannerParams,
 ) : LocationScanner, LocationListener {
+    init {
+        LiasLicenseGate.requireFeature(context.applicationContext, LiasLicensedFeature.SCANNER)
+    }
     private var locationManager: LocationManager? = null
 
     /** 제일 최근 데이터 **/

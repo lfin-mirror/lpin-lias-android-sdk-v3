@@ -6,6 +6,8 @@ object Constants {
 
     const val SUCCESS_CODE = "00"
     const val SUCCESS_MESSAGE = "SUCCESS"
+    const val CLIENT_ERROR_SDK_INIT = "11"
+    const val CLIENT_ERROR_SDK_MESSAGE = "SDK 초기화가 필요합니다"
     const val CLIENT_ERROR_NO_PERMISSION_CODE = "13"
     const val CLIENT_ERROR_NO_PERMISSION_MESSAGE = "사용자 권한을 확인해 주세요"
     const val CLIENT_ERROR_NO_GPS_CODE = "15"

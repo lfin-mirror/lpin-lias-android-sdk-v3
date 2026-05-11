@@ -75,6 +75,7 @@ dependencies {
     implementation group: 'co.nstant.in', name: 'cbor', version: '0.4'
 
     implementation 'com.google.code.gson:gson:2.8.6'
+    implementation project(':licensing-core')
     implementation project(':face')
     implementation project(':scanner')
     implementation project(':space:pixel-matching')

@@ -18,9 +18,13 @@ rootProject.name = 'lpin-android-sdk'
 
 include ':face'
 include ':scanner'
+include ':licensing-core'
 include ':space:pixel-matching'
 include ':space:authenticator'
+include ':tools:license-cli'
 
 project(':scanner').projectDir = new File(rootDir, 'scanner')
+project(':licensing-core').projectDir = new File(rootDir, 'licensing-core')
 project(':space:pixel-matching').projectDir = new File(rootDir, 'space/pixel-matching')
 project(':space:authenticator').projectDir = new File(rootDir, 'space/authenticator')
+project(':tools:license-cli').projectDir = new File(rootDir, 'tools/license-cli')

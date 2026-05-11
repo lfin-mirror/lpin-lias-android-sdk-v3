@@ -7,11 +7,16 @@ import android.telephony.CellInfoGsm
 import android.telephony.CellInfoLte
 import android.telephony.CellInfoWcdma
 import android.telephony.TelephonyManager
+import io.lpin.android.sdk.licensing.LiasLicensedFeature
+import io.lpin.android.sdk.licensing.LiasLicenseGate
 
 @SuppressLint("MissingPermission")
 class CellScannerImpl(
     val context: Context
 ) : CellScanner {
+    init {
+        LiasLicenseGate.requireFeature(context.applicationContext, LiasLicensedFeature.SCANNER)
+    }
 
     override fun init() {
         if (!ScannerValidate.hasPermission(context, permissions))
