@@ -140,16 +140,17 @@ payload를 decode하면 아래 필드가 나옵니다.
 ./gradlew -q :tools:license-cli:run --args="sign-key \
   --private-key /absolute/path/to/lias_license_ed25519 \
   --app-pkg-id com.example.customer \
-  --issued-at 2026-01-01T00:00:00Z \
   --expire-at 2027-01-01T00:00:00Z \
   --signing-cert-sha256 AABBCCDDEEFF00112233 \
   --features face,scanner"
 ```
 
+`--issued-at`을 생략하면 CLI가 현재 UTC 시각을 자동으로 넣습니다. 명시적으로 고정 시간이 필요하면 기존처럼 `--issued-at 2026-01-01T00:00:00Z`를 전달하면 됩니다.
+
 사내용 브라우저 발급 도구도 함께 제공합니다.
 
 - `tools/license-cli/license-issuer.html`
 
-이 HTML은 PKCS#8 PEM 형식의 Ed25519 private key를 입력받아 브라우저에서 compact key를 생성합니다.
+이 HTML은 PKCS#8 PEM 형식의 Ed25519 private key를 입력받아 브라우저에서 compact key를 생성합니다. `Issued At` 입력을 비워두면 현재 UTC 시각을 자동으로 사용합니다.
 
-이 compact key는 verifier에서 직접 검증되며, 현재 SDK의 권장 통합 방식입니다. 기본 필수 필드는 `app_pkg_id`, `issued_at`, `expire_at`이고, 선택적으로 `signing_cert_sha256`와 `features`를 포함할 수 있습니다. `signing_cert_sha256`가 있으면 현재 앱 인증서와 일치해야 하며, `features`가 있으면 서명된 기능 subset만 허용됩니다. 둘 다 없으면 레거시 compact key로 간주되어 전체 기능을 허용합니다. asset JSON 라이센스는 package/cert/features 전체 검증이 필요한 레거시 fallback 경로로 유지됩니다.
+이 compact key는 verifier에서 직접 검증되며, 현재 SDK의 권장 통합 방식입니다. payload에는 항상 `app_pkg_id`, `issued_at`, `expire_at`가 들어가고, 생성 시 `issued_at`을 생략하면 현재 UTC 시각이 자동으로 채워집니다. 선택적으로 `signing_cert_sha256`와 `features`를 포함할 수 있습니다. `signing_cert_sha256`가 있으면 현재 앱 인증서와 일치해야 하며, `features`가 있으면 서명된 기능 subset만 허용됩니다. 둘 다 없으면 레거시 compact key로 간주되어 전체 기능을 허용합니다. asset JSON 라이센스는 package/cert/features 전체 검증이 필요한 레거시 fallback 경로로 유지됩니다.

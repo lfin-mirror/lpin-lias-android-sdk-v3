@@ -61,7 +61,8 @@ payload를 decode하면 아래 형태의 JSON이 나옵니다.
 
 설명:
 
-- `app_pkg_id`, `issued_at`, `expire_at`는 필수입니다.
+- payload에는 항상 `app_pkg_id`, `issued_at`, `expire_at`가 포함됩니다.
+- 생성 시 `--issued-at`을 생략하면 현재 UTC 시각이 자동으로 `issued_at`에 들어갑니다.
 - `signing_cert_sha256`는 선택값이며, 포함된 경우 현재 앱 인증서와 일치해야 합니다.
 - `features`는 선택값이며, 포함된 경우 서명된 기능 subset만 허용됩니다.
 - `signing_cert_sha256`, `features`가 모두 없는 키는 레거시 compact key로 간주되며 전체 기능을 허용합니다.
@@ -72,11 +73,12 @@ CLI 생성 명령:
 ./gradlew -q :tools:license-cli:run --args="sign-key \
   --private-key /absolute/path/to/lias_license_ed25519 \
   --app-pkg-id com.example.customer \
-  --issued-at 2026-01-01T00:00:00Z \
   --expire-at 2027-01-01T00:00:00Z \
   --signing-cert-sha256 AABBCCDDEEFF00112233 \
   --features face,scanner"
 ```
+
+`--issued-at`을 생략하면 CLI가 현재 UTC 시각을 자동으로 사용합니다. 특정 시점을 고정해야 할 때만 `--issued-at`을 명시적으로 전달하면 됩니다.
 
 사내용 브라우저 발급 도구:
 

@@ -31,8 +31,8 @@
         <input id="app_pkg_id" name="app_pkg_id" placeholder="com.example.customer" required />
       </label>
       <label>
-        Issued At (UTC)
-        <input id="issued_at" name="issued_at" placeholder="2026-01-01T00:00:00Z" required />
+        Issued At (UTC, optional)
+        <input id="issued_at" name="issued_at" placeholder="비워두면 현재 UTC 시각 사용" />
       </label>
       <label>
         Expire At (UTC)
@@ -143,9 +143,10 @@
       licenseNode.textContent = '';
 
       try {
+        const issuedAt = form.issued_at.value.trim() || new Date(Math.floor(Date.now() / 1000) * 1000).toISOString();
         const payload = {
           app_pkg_id: form.app_pkg_id.value.trim(),
-          issued_at: form.issued_at.value.trim(),
+          issued_at: issuedAt,
           expire_at: form.expire_at.value.trim(),
         };
 

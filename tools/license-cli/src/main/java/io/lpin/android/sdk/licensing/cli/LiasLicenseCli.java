@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -53,7 +54,7 @@ public final class LiasLicenseCli {
                 "Commands:\n" +
                 "  extract-public-key --public-key /path/to/id_ed25519.pub\n" +
                 "  sign --private-key /path/to/id_ed25519 --package-name com.example.app --signing-cert-sha256 ABCD --features face,scanner,space --not-before 2026-01-01T00:00:00Z --not-after 2027-01-01T00:00:00Z [--customer Acme] [--license-id acme-prod] [--key-id main] [--output /tmp/license.json]\n" +
-                "  sign-key --private-key /path/to/id_ed25519 --app-pkg-id com.example.app --issued-at 2026-01-01T00:00:00Z --expire-at 2027-01-01T00:00:00Z [--signing-cert-sha256 AABB] [--features face,scanner] [--output /tmp/license.key]\n" +
+                "  sign-key --private-key /path/to/id_ed25519 --app-pkg-id com.example.app [--issued-at 2026-01-01T00:00:00Z] --expire-at 2027-01-01T00:00:00Z [--signing-cert-sha256 AABB] [--features face,scanner] [--output /tmp/license.key]\n" +
                 "\n" +
                 "Notes:\n" +
                 "- Generate the signing key with: ssh-keygen -t ed25519 -f lias_license_ed25519\n" +
@@ -128,7 +129,7 @@ public final class LiasLicenseCli {
     private static void signKey(Map<String, String> options) throws Exception {
         Path privateKeyPath = requirePath(options, "private-key");
         String appPkgId = requireOption(options, "app-pkg-id").trim();
-        String issuedAt = requireUtcTimestamp(options, "issued-at");
+        String issuedAt = resolveUtcTimestamp(options, "issued-at", Instant.now().truncatedTo(ChronoUnit.SECONDS).toString());
         String expireAt = requireUtcTimestamp(options, "expire-at");
         String signingCertSha256 = options.containsKey("signing-cert-sha256")
                 ? normalizeDigest(requireOption(options, "signing-cert-sha256"))
@@ -215,7 +216,18 @@ public final class LiasLicenseCli {
     }
 
     private static String requireUtcTimestamp(Map<String, String> options, String key) {
-        String value = requireOption(options, key).trim();
+        return parseUtcTimestamp(requireOption(options, key).trim(), key);
+    }
+
+    private static String resolveUtcTimestamp(Map<String, String> options, String key, String defaultValue) {
+        String value = options.get(key);
+        if (value == null || value.isBlank()) {
+            return parseUtcTimestamp(defaultValue, key);
+        }
+        return parseUtcTimestamp(value.trim(), key);
+    }
+
+    private static String parseUtcTimestamp(String value, String key) {
         try {
             Instant.parse(value);
         } catch (DateTimeParseException exception) {
