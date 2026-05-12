@@ -10,6 +10,7 @@ def versionPatch = 0
 def licensePublicKeyId = (rootProject.findProperty('lpinLicensePublicKeyId') ?: 'main').toString()
 def licensePublicKeyBase64Url = (rootProject.findProperty('lpinLicensePublicKeyBase64Url') ?: '').toString()
 def licenseAssetFileName = (rootProject.findProperty('lpinLicenseAssetFileName') ?: 'lpin-lias-license.json').toString()
+def licenseManifestMetaDataKey = (rootProject.findProperty('lpinLicenseManifestMetaDataKey') ?: 'io.lpin.license.KEY').toString()
 
 android {
     namespace 'io.lpin.android.sdk.licensing'
@@ -25,6 +26,7 @@ android {
         buildConfigField 'String', 'LICENSE_PUBLIC_KEY_ID', "\"${licensePublicKeyId}\""
         buildConfigField 'String', 'LICENSE_PUBLIC_KEY_BASE64URL', "\"${licensePublicKeyBase64Url}\""
         buildConfigField 'String', 'LICENSE_ASSET_FILE_NAME', "\"${licenseAssetFileName}\""
+        buildConfigField 'String', 'LICENSE_MANIFEST_META_DATA_KEY', "\"${licenseManifestMetaDataKey}\""
     }
 
     buildTypes {

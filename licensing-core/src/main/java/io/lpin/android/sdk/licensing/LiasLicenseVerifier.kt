@@ -24,6 +24,107 @@ object LiasLicenseVerifier {
     }
 
     @JvmStatic
+    fun verifyCompactLicenseKeyEmbedded(
+        licenseKey: String,
+        packageName: String,
+        signingCertSha256: String? = null,
+    ): LiasCompactLicenseClaims {
+        return verifyCompactLicenseKey(
+            licenseKey = licenseKey,
+            packageName = packageName,
+            signingCertSha256 = signingCertSha256,
+            publicKeyBase64Url = BuildConfig.LICENSE_PUBLIC_KEY_BASE64URL,
+        )
+    }
+
+    @JvmStatic
+    fun verifyCompactLicenseKey(
+        licenseKey: String,
+        packageName: String,
+        signingCertSha256: String? = null,
+        publicKeyBase64Url: String,
+        nowEpochMillis: Long = System.currentTimeMillis(),
+    ): LiasCompactLicenseClaims {
+        if (publicKeyBase64Url.isBlank()) {
+            throw LiasLicenseException(
+                "Embedded license public key is empty. Set lpinLicensePublicKeyBase64Url before building the SDK."
+            )
+        }
+
+        val segments = licenseKey.trim().split('.')
+        if (segments.size != 2 || segments.any { it.isBlank() }) {
+            throw LiasLicenseException("Compact license key must be '<payload>.<signature>'")
+        }
+
+        val payloadJson = decodeBase64UrlToString(segments[0], "payload")
+        val payloadObject = try {
+            JsonParser.parseString(payloadJson).asJsonObject
+        } catch (exception: Exception) {
+            throw LiasLicenseException("Compact license payload is not valid JSON", exception)
+        }
+        val canonicalPayloadJson = LiasLicenseCanonicalJson.canonicalize(payloadObject)
+        verifySignature(publicKeyBase64Url, canonicalPayloadJson, segments[1])
+
+        val appPkgId = payloadObject.getAsJsonPrimitive("app_pkg_id")?.asString?.trim().orEmpty()
+        if (appPkgId.isEmpty()) {
+            throw LiasLicenseException("Compact license app_pkg_id is missing")
+        }
+        if (appPkgId != packageName) {
+            throw LiasLicenseException(
+                "Compact license app_pkg_id '$appPkgId' does not match app package '$packageName'"
+            )
+        }
+
+        val issuedAtEpochMillis = parseIsoInstant(
+            payloadObject.getAsJsonPrimitive("issued_at")?.asString.orEmpty(),
+            "issued_at",
+        )
+        val expireAtEpochMillis = parseIsoInstant(
+            payloadObject.getAsJsonPrimitive("expire_at")?.asString.orEmpty(),
+            "expire_at",
+        )
+        if (nowEpochMillis < issuedAtEpochMillis) {
+            throw LiasLicenseException("Compact license is not active yet")
+        }
+        if (nowEpochMillis > expireAtEpochMillis) {
+            throw LiasLicenseException("Compact license has expired")
+        }
+
+        val compactSigningCertSha256 = payloadObject.getAsJsonPrimitive("signing_cert_sha256")
+            ?.asString
+            ?.let { normalizeDigest(it) }
+            ?.takeIf { it.isNotEmpty() }
+        val normalizedSubjectSigningCertSha256 = signingCertSha256?.let { normalizeDigest(it) }
+        if (compactSigningCertSha256 != null && normalizedSubjectSigningCertSha256 != null && compactSigningCertSha256 != normalizedSubjectSigningCertSha256) {
+            throw LiasLicenseException("Compact license signing_cert_sha256 does not match the installed app certificate")
+        }
+
+        val featuresJson = payloadObject.getAsJsonArray("features")
+        val features = featuresJson?.let {
+            val scopedFeatures = LinkedHashSet<LiasLicensedFeature>()
+            for (element in it) {
+                val featureValue = element.asString
+                val feature = LiasLicensedFeature.fromClaimValue(featureValue)
+                    ?: throw LiasLicenseException("Unknown compact licensed feature: $featureValue")
+                scopedFeatures.add(feature)
+            }
+            if (scopedFeatures.isEmpty()) {
+                throw LiasLicenseException("Compact license features are empty")
+            }
+            scopedFeatures.toSet()
+        }
+
+        return LiasCompactLicenseClaims(
+            appPkgId = appPkgId,
+            issuedAtEpochMillis = issuedAtEpochMillis,
+            expireAtEpochMillis = expireAtEpochMillis,
+            signingCertSha256 = compactSigningCertSha256,
+            features = features,
+            payloadJson = canonicalPayloadJson,
+        )
+    }
+
+    @JvmStatic
     fun verify(
         envelopeJson: String,
         subject: LiasLicenseSubject,
@@ -147,6 +248,15 @@ object LiasLicenseVerifier {
             Base64.getUrlDecoder().decode(value.trim())
         } catch (exception: IllegalArgumentException) {
             throw LiasLicenseException("License $label is not valid base64url", exception)
+        }
+    }
+
+    private fun decodeBase64UrlToString(value: String, label: String): String {
+        return try {
+            decodeBase64Url(value, label).toString(StandardCharsets.UTF_8)
+        } catch (exception: Exception) {
+            if (exception is LiasLicenseException) throw exception
+            throw LiasLicenseException("License $label is not valid UTF-8", exception)
         }
     }
 

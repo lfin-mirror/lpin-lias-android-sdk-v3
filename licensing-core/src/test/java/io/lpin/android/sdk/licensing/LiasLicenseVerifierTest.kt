@@ -134,6 +134,153 @@ class LiasLicenseVerifierTest {
         )
     }
 
+    @Test
+    fun verifiesValidCompactLicenseKey() {
+        val keyPair = generateKeyPair()
+        val licenseKey = buildCompactLicenseKey(keyPair)
+
+        val verified = LiasLicenseVerifier.verifyCompactLicenseKey(
+            licenseKey = licenseKey,
+            packageName = subject.packageName,
+            publicKeyBase64Url = publicKey(keyPair),
+            nowEpochMillis = 1_715_000_000_000,
+        )
+
+        assertEquals(subject.packageName, verified.appPkgId)
+        assertTrue(verified.expireAtEpochMillis > verified.issuedAtEpochMillis)
+        assertEquals(null, verified.signingCertSha256)
+        assertEquals(null, verified.features)
+    }
+
+    @Test(expected = LiasLicenseException::class)
+    fun rejectsExpiredCompactLicenseKey() {
+        val keyPair = generateKeyPair()
+        val licenseKey = buildCompactLicenseKey(keyPair, expireAt = "2024-01-01T00:00:00Z")
+
+        LiasLicenseVerifier.verifyCompactLicenseKey(
+            licenseKey = licenseKey,
+            packageName = subject.packageName,
+            publicKeyBase64Url = publicKey(keyPair),
+            nowEpochMillis = 1_715_000_000_000,
+        )
+    }
+
+    @Test(expected = LiasLicenseException::class)
+    fun rejectsWrongAppPkgIdCompactLicenseKey() {
+        val keyPair = generateKeyPair()
+        val licenseKey = buildCompactLicenseKey(keyPair, appPkgId = "com.example.other")
+
+        LiasLicenseVerifier.verifyCompactLicenseKey(
+            licenseKey = licenseKey,
+            packageName = subject.packageName,
+            publicKeyBase64Url = publicKey(keyPair),
+            nowEpochMillis = 1_715_000_000_000,
+        )
+    }
+
+    @Test
+    fun verifiesScopedCompactLicenseKey() {
+        val keyPair = generateKeyPair()
+        val licenseKey = buildCompactLicenseKey(
+            keyPair = keyPair,
+            signingCertSha256 = subject.signingCertSha256,
+            features = listOf("face", "scanner"),
+        )
+
+        val verified = LiasLicenseVerifier.verifyCompactLicenseKey(
+            licenseKey = licenseKey,
+            packageName = subject.packageName,
+            publicKeyBase64Url = publicKey(keyPair),
+            nowEpochMillis = 1_715_000_000_000,
+        )
+
+        assertEquals(subject.signingCertSha256, verified.signingCertSha256)
+        assertEquals(setOf(LiasLicensedFeature.FACE, LiasLicensedFeature.SCANNER), verified.features)
+    }
+
+    @Test(expected = LiasLicenseException::class)
+    fun rejectsUnknownCompactFeature() {
+        val keyPair = generateKeyPair()
+        val licenseKey = buildCompactLicenseKey(
+            keyPair = keyPair,
+            features = listOf("face", "unknown-feature"),
+        )
+
+        LiasLicenseVerifier.verifyCompactLicenseKey(
+            licenseKey = licenseKey,
+            packageName = subject.packageName,
+            publicKeyBase64Url = publicKey(keyPair),
+            nowEpochMillis = 1_715_000_000_000,
+        )
+    }
+
+    @Test(expected = LiasLicenseException::class)
+    fun rejectsEmptyCompactFeatures() {
+        val keyPair = generateKeyPair()
+        val payload = linkedMapOf(
+            "app_pkg_id" to subject.packageName,
+            "issued_at" to "2024-01-01T00:00:00Z",
+            "expire_at" to "2027-01-01T00:00:00Z",
+            "features" to emptyList<String>(),
+        )
+        val payloadJson = LiasLicenseCanonicalJson.canonicalize(payload)
+        val signatureBytes = sign(payloadJson, keyPair.private as Ed25519PrivateKeyParameters)
+        val compactKey = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(payloadJson.toByteArray(StandardCharsets.UTF_8)) +
+            "." + Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes)
+
+        LiasLicenseVerifier.verifyCompactLicenseKey(
+            licenseKey = compactKey,
+            packageName = subject.packageName,
+            publicKeyBase64Url = publicKey(keyPair),
+            nowEpochMillis = 1_715_000_000_000,
+        )
+    }
+
+    @Test(expected = LiasLicenseException::class)
+    fun rejectsWrongCompactSigningCertificate() {
+        val keyPair = generateKeyPair()
+        val licenseKey = buildCompactLicenseKey(
+            keyPair = keyPair,
+            signingCertSha256 = "DEADBEEF",
+        )
+
+        LiasLicenseVerifier.verifyCompactLicenseKey(
+            licenseKey = licenseKey,
+            packageName = subject.packageName,
+            signingCertSha256 = subject.signingCertSha256,
+            publicKeyBase64Url = publicKey(keyPair),
+            nowEpochMillis = 1_715_000_000_000,
+        )
+    }
+
+    @Test(expected = LiasLicenseException::class)
+    fun rejectsTamperedCompactLicenseKey() {
+        val keyPair = generateKeyPair()
+        val payload = linkedMapOf(
+            "app_pkg_id" to subject.packageName,
+            "issued_at" to "2024-01-01T00:00:00Z",
+            "expire_at" to "2027-01-01T00:00:00Z",
+        )
+        val payloadJson = LiasLicenseCanonicalJson.canonicalize(payload)
+        val signatureBytes = sign(payloadJson, keyPair.private as Ed25519PrivateKeyParameters)
+        val tamperedPayload = linkedMapOf(
+            "app_pkg_id" to "tampered.package",
+            "issued_at" to "2024-01-01T00:00:00Z",
+            "expire_at" to "2027-01-01T00:00:00Z",
+        )
+        val compactKey = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(LiasLicenseCanonicalJson.canonicalize(tamperedPayload).toByteArray(StandardCharsets.UTF_8)) +
+            "." + Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes)
+
+        LiasLicenseVerifier.verifyCompactLicenseKey(
+            licenseKey = compactKey,
+            packageName = subject.packageName,
+            publicKeyBase64Url = publicKey(keyPair),
+            nowEpochMillis = 1_715_000_000_000,
+        )
+    }
+
     private fun generateKeyPair(): AsymmetricCipherKeyPair {
         val generator = Ed25519KeyPairGenerator()
         generator.init(Ed25519KeyGenerationParameters(SecureRandom()))
@@ -171,6 +318,34 @@ class LiasLicenseVerifierTest {
             "signature" to Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes),
         )
         return LiasLicenseCanonicalJson.canonicalize(envelope)
+    }
+
+    private fun buildCompactLicenseKey(
+        keyPair: AsymmetricCipherKeyPair,
+        appPkgId: String = subject.packageName,
+        issuedAt: String = "2024-01-01T00:00:00Z",
+        expireAt: String = "2027-01-01T00:00:00Z",
+        signingCertSha256: String? = null,
+        features: List<String>? = null,
+    ): String {
+        val payload = linkedMapOf<String, Any>(
+            "app_pkg_id" to appPkgId,
+            "issued_at" to issuedAt,
+            "expire_at" to expireAt,
+        )
+        if (signingCertSha256 != null) {
+            payload["signing_cert_sha256"] = signingCertSha256
+        }
+        if (features != null) {
+            payload["features"] = features
+        }
+        val payloadJson = LiasLicenseCanonicalJson.canonicalize(payload)
+        val signatureBytes = sign(payloadJson, keyPair.private as Ed25519PrivateKeyParameters)
+        val payloadBase64Url = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(payloadJson.toByteArray(StandardCharsets.UTF_8))
+        val signatureBase64Url = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(signatureBytes)
+        return "$payloadBase64Url.$signatureBase64Url"
     }
 
     private fun buildPayloadMap(

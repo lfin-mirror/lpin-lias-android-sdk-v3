@@ -16,3 +16,12 @@ data class LiasVerifiedLicense(
     val keyId: String,
     val payloadJson: String,
 )
+
+data class LiasCompactLicenseClaims(
+    val appPkgId: String,
+    val issuedAtEpochMillis: Long,
+    val expireAtEpochMillis: Long,
+    val signingCertSha256: String?,
+    val features: Set<LiasLicensedFeature>?,
+    val payloadJson: String,
+)

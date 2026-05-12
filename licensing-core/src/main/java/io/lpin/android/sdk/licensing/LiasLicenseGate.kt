@@ -2,6 +2,7 @@ package io.lpin.android.sdk.licensing
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import java.io.FileNotFoundException
@@ -39,9 +40,18 @@ object LiasLicenseGate {
             cachedFailure?.let { throw it }
 
             return try {
-                val envelopeJson = readLicenseEnvelope(context)
                 val subject = buildSubject(context)
-                val verifiedLicense = LiasLicenseVerifier.verifyEmbedded(envelopeJson, subject)
+                val verifiedLicense = readManifestCompactLicenseKey(context)?.let { licenseKey ->
+                    val compactClaims = LiasLicenseVerifier.verifyCompactLicenseKeyEmbedded(
+                        licenseKey = licenseKey,
+                        packageName = subject.packageName,
+                        signingCertSha256 = subject.signingCertSha256,
+                    )
+                    compactClaims.toVerifiedLicense(subject)
+                } ?: run {
+                    val envelopeJson = readLicenseEnvelope(context)
+                    LiasLicenseVerifier.verifyEmbedded(envelopeJson, subject)
+                }
                 cachedLicense = verifiedLicense
                 verifiedLicense
             } catch (exception: LiasLicenseException) {
@@ -51,12 +61,21 @@ object LiasLicenseGate {
         }
     }
 
+    private fun readManifestCompactLicenseKey(context: Context): String? {
+        val applicationInfo = context.packageManager.getApplicationInfo(
+            context.packageName,
+            PackageManager.GET_META_DATA,
+        )
+        val value = applicationInfo.metaData?.getString(BuildConfig.LICENSE_MANIFEST_META_DATA_KEY)
+        return value?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
     private fun readLicenseEnvelope(context: Context): String {
         return try {
             context.assets.open(BuildConfig.LICENSE_ASSET_FILE_NAME).bufferedReader().use { it.readText() }
         } catch (exception: FileNotFoundException) {
             throw LiasLicenseException(
-                "Missing asset '${BuildConfig.LICENSE_ASSET_FILE_NAME}'. Add the signed license file to the host app assets directory.",
+                "Missing manifest meta-data '${BuildConfig.LICENSE_MANIFEST_META_DATA_KEY}' or asset '${BuildConfig.LICENSE_ASSET_FILE_NAME}'. Provide a compact license key in AndroidManifest or add the signed license file to assets.",
                 exception,
             )
         }
@@ -88,5 +107,19 @@ object LiasLicenseGate {
 
         val digest = MessageDigest.getInstance("SHA-256").digest(signatureBytes)
         return digest.joinToString(separator = "") { byte -> "%02X".format(byte) }
+    }
+
+    private fun LiasCompactLicenseClaims.toVerifiedLicense(subject: LiasLicenseSubject): LiasVerifiedLicense {
+        return LiasVerifiedLicense(
+            licenseId = appPkgId,
+            customer = null,
+            packageName = appPkgId,
+            signingCertSha256 = signingCertSha256 ?: subject.signingCertSha256,
+            features = features ?: LiasLicensedFeature.entries.toSet(),
+            notBeforeEpochMillis = issuedAtEpochMillis,
+            notAfterEpochMillis = expireAtEpochMillis,
+            keyId = BuildConfig.LICENSE_PUBLIC_KEY_ID,
+            payloadJson = payloadJson,
+        )
     }
 }

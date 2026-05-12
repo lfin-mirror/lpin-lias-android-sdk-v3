@@ -38,6 +38,7 @@ public final class LiasLicenseCli {
         switch (command) {
             case "extract-public-key" -> extractPublicKey(options);
             case "sign" -> sign(options);
+            case "sign-key" -> signKey(options);
             default -> throw new IllegalArgumentException("Unknown command: " + command);
         }
     }
@@ -52,6 +53,7 @@ public final class LiasLicenseCli {
                 "Commands:\n" +
                 "  extract-public-key --public-key /path/to/id_ed25519.pub\n" +
                 "  sign --private-key /path/to/id_ed25519 --package-name com.example.app --signing-cert-sha256 ABCD --features face,scanner,space --not-before 2026-01-01T00:00:00Z --not-after 2027-01-01T00:00:00Z [--customer Acme] [--license-id acme-prod] [--key-id main] [--output /tmp/license.json]\n" +
+                "  sign-key --private-key /path/to/id_ed25519 --app-pkg-id com.example.app --issued-at 2026-01-01T00:00:00Z --expire-at 2027-01-01T00:00:00Z [--signing-cert-sha256 AABB] [--features face,scanner] [--output /tmp/license.key]\n" +
                 "\n" +
                 "Notes:\n" +
                 "- Generate the signing key with: ssh-keygen -t ed25519 -f lias_license_ed25519\n" +
@@ -121,6 +123,47 @@ public final class LiasLicenseCli {
             return;
         }
         Files.writeString(Path.of(outputPath), outputJson, StandardCharsets.UTF_8);
+    }
+
+    private static void signKey(Map<String, String> options) throws Exception {
+        Path privateKeyPath = requirePath(options, "private-key");
+        String appPkgId = requireOption(options, "app-pkg-id").trim();
+        String issuedAt = requireUtcTimestamp(options, "issued-at");
+        String expireAt = requireUtcTimestamp(options, "expire-at");
+        String signingCertSha256 = options.containsKey("signing-cert-sha256")
+                ? normalizeDigest(requireOption(options, "signing-cert-sha256"))
+                : null;
+        List<String> features = options.containsKey("features")
+                ? parseFeatures(requireOption(options, "features"))
+                : null;
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("app_pkg_id", appPkgId);
+        payload.put("issued_at", issuedAt);
+        payload.put("expire_at", expireAt);
+        if (signingCertSha256 != null && !signingCertSha256.isBlank()) {
+            payload.put("signing_cert_sha256", signingCertSha256);
+        }
+        if (features != null) {
+            payload.put("features", features);
+        }
+
+        String payloadJson = canonicalize(payload);
+        Ed25519PrivateKeyParameters privateKey = readPrivateKey(privateKeyPath);
+        String payloadBase64Url = Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
+        String signatureBase64Url = Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(sign(payloadJson, privateKey));
+        String licenseKey = payloadBase64Url + "." + signatureBase64Url;
+
+        String outputPath = options.get("output");
+        if (outputPath == null || outputPath.isBlank()) {
+            System.out.println(licenseKey);
+            return;
+        }
+        Files.writeString(Path.of(outputPath), licenseKey + System.lineSeparator(), StandardCharsets.UTF_8);
     }
 
     private static byte[] sign(String payloadJson, Ed25519PrivateKeyParameters privateKey) {
