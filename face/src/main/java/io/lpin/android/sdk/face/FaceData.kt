@@ -1,6 +1,7 @@
 package io.lpin.android.sdk.face
 
 import android.graphics.Bitmap
+import io.lpin.android.sdk.face.extenstions.toJpegByteArray
 
 data class FaceData(
         val faceUuid: String,
@@ -15,5 +16,10 @@ data class FaceData(
         } catch (ignore: Exception) {
             0.0F
         }
+    }
+
+    @JvmOverloads
+    fun getThumbnailJpeg(quality: Int = 85): ByteArray? {
+        return thumbnail?.toJpegByteArray(quality)
     }
 }
