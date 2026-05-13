@@ -1,173 +1,240 @@
 <!doctype html>
 <html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LIAS Compact License Issuer</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 24px; line-height: 1.5; }
-    h1 { margin-bottom: 8px; }
-    .note { color: #666; margin-bottom: 24px; }
-    form { display: grid; gap: 16px; max-width: 960px; }
-    label { display: grid; gap: 6px; font-weight: 600; }
-    input, textarea { font: inherit; padding: 10px 12px; border: 1px solid #999; border-radius: 8px; width: 100%; box-sizing: border-box; }
-    textarea { min-height: 120px; }
-    .row { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-    button { font: inherit; padding: 12px 16px; border: 0; border-radius: 10px; cursor: pointer; background: #2563eb; color: white; }
-    pre { white-space: pre-wrap; word-break: break-all; padding: 16px; border-radius: 8px; background: rgba(127,127,127,0.12); }
-    .error { color: #b91c1c; font-weight: 600; }
-    .help { font-size: 0.95rem; color: #666; }
-  </style>
-</head>
-<body>
-  <h1>LIAS Compact License Issuer</h1>
-  <p class="note">사내용 발급 페이지입니다. 고객사에 배포하지 마세요. PKCS#8 PEM 형식의 Ed25519 private key를 입력하면 compact manifest license key를 생성합니다.</p>
-
-  <form id="issuer-form">
-    <div class="row">
-      <label>
-        App Package ID
-        <input id="app_pkg_id" name="app_pkg_id" placeholder="com.example.customer" required />
-      </label>
-      <label>
-        Issued At (UTC, optional)
-        <input id="issued_at" name="issued_at" placeholder="비워두면 현재 UTC 시각 사용" />
-      </label>
-      <label>
-        Expire At (UTC)
-        <input id="expire_at" name="expire_at" placeholder="2027-01-01T00:00:00Z" required />
-      </label>
-    </div>
-
-    <div class="row">
-      <label>
-        Signing Cert SHA-256 (optional)
-        <input id="signing_cert_sha256" name="signing_cert_sha256" placeholder="AABBCCDDEEFF00112233" />
-      </label>
-      <label>
-        Features (optional, comma-separated)
-        <input id="features" name="features" placeholder="face,scanner,space" />
-      </label>
-    </div>
-
-    <label>
-      Ed25519 Private Key (PKCS#8 PEM)
-      <textarea id="private_key_pem" name="private_key_pem" placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----" required></textarea>
-      <span class="help">OpenSSH private key가 아니라 브라우저 WebCrypto가 import 가능한 PKCS#8 PEM을 넣어야 합니다.</span>
-    </label>
-
-    <button type="submit">Compact License Key 생성</button>
-    <div id="error" class="error"></div>
-    <div>
-      <label>
-        Payload JSON
-        <pre id="payload-json"></pre>
-      </label>
-      <label>
-        Compact License Key
-        <pre id="license-key"></pre>
-      </label>
-    </div>
-  </form>
-
-  <script>
-    const form = document.getElementById('issuer-form');
-    const errorNode = document.getElementById('error');
-    const payloadNode = document.getElementById('payload-json');
-    const licenseNode = document.getElementById('license-key');
-
-    function normalizeDigest(value) {
-      return value.replace(/:/g, '').trim().toUpperCase();
-    }
-
-    function parseFeatures(value) {
-      const items = value.split(',').map(item => item.trim().toLowerCase()).filter(Boolean);
-      return items.length > 0 ? items : null;
-    }
-
-    function canonicalize(value) {
-      if (value === null) return 'null';
-      if (Array.isArray(value)) {
-        return `[${value.map(canonicalize).join(',')}]`;
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LIAS Compact License Issuer</title>
+    <style>
+      :root {
+        color-scheme: light dark;
       }
-      if (typeof value === 'object') {
-        return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonicalize(value[key])}`).join(',')}}`;
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 24px;
+        line-height: 1.5;
       }
-      if (typeof value === 'string') return JSON.stringify(value);
-      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-      return JSON.stringify(String(value));
-    }
-
-    function pemToArrayBuffer(pem) {
-      const base64 = pem
-        .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-        .replace(/-----END PRIVATE KEY-----/g, '')
-        .replace(/\s+/g, '');
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) {
-        bytes[i] = binary.charCodeAt(i);
+      h1 {
+        margin-bottom: 8px;
       }
-      return bytes.buffer;
-    }
+      .note {
+        color: #666;
+        margin-bottom: 24px;
+      }
+      form {
+        display: grid;
+        gap: 16px;
+        max-width: 960px;
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        font-weight: 600;
+      }
+      input,
+      textarea {
+        font: inherit;
+        padding: 10px 12px;
+        border: 1px solid #999;
+        border-radius: 8px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      textarea {
+        min-height: 120px;
+      }
+      .row {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      }
+      button {
+        font: inherit;
+        padding: 12px 16px;
+        border: 0;
+        border-radius: 10px;
+        cursor: pointer;
+        background: #2563eb;
+        color: white;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-all;
+        padding: 16px;
+        border-radius: 8px;
+        background: rgba(127, 127, 127, 0.12);
+      }
+      .error {
+        color: #b91c1c;
+        font-weight: 600;
+      }
+      .help {
+        font-size: 0.95rem;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>LIAS Compact License Issuer</h1>
+    <p class="note">
+      사내용 발급 페이지입니다. 고객사에 배포하지 마세요. PKCS#8 PEM 형식의
+      Ed25519 private key를 입력하면 앱 패키지명과 사용 기간 기준의 compact
+      manifest license key를 생성합니다.
+    </p>
 
-    function base64UrlEncode(bytes) {
-      let binary = '';
-      const array = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-      for (const byte of array) binary += String.fromCharCode(byte);
-      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-    }
+    <form id="issuer-form">
+      <div class="row">
+        <label>
+          App Package ID
+          <input
+            id="app_pkg_id"
+            name="app_pkg_id"
+            placeholder="com.example.customer"
+            required
+          />
+        </label>
+        <label>
+          Issued At (UTC, optional)
+          <input
+            id="issued_at"
+            name="issued_at"
+            placeholder="비워두면 현재 UTC 시각 사용"
+          />
+        </label>
+        <label>
+          Expire At (UTC)
+          <input
+            id="expire_at"
+            name="expire_at"
+            placeholder="2027-01-01T00:00:00Z"
+            required
+          />
+        </label>
+      </div>
 
-    async function signEd25519(payloadJson, pem) {
-      const pkcs8 = pemToArrayBuffer(pem);
-      const privateKey = await crypto.subtle.importKey(
-        'pkcs8',
-        pkcs8,
-        { name: 'Ed25519' },
-        false,
-        ['sign'],
-      );
-      const payloadBytes = new TextEncoder().encode(payloadJson);
-      const signature = await crypto.subtle.sign('Ed25519', privateKey, payloadBytes);
-      return {
-        payloadBase64Url: base64UrlEncode(payloadBytes),
-        signatureBase64Url: base64UrlEncode(signature),
-      };
-    }
+      <label>
+        Ed25519 Private Key (PKCS#8 PEM)
+        <textarea
+          id="private_key_pem"
+          name="private_key_pem"
+          placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+          required
+        ></textarea>
+        <span class="help"
+          >OpenSSH private key가 아니라 브라우저 WebCrypto가 import 가능한
+          PKCS#8 PEM을 넣어야 합니다.</span
+        >
+      </label>
 
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      errorNode.textContent = '';
-      payloadNode.textContent = '';
-      licenseNode.textContent = '';
+      <button type="submit">Compact License Key 생성</button>
+      <div id="error" class="error"></div>
+      <div>
+        <label>
+          Payload JSON
+          <pre id="payload-json"></pre>
+        </label>
+        <label>
+          Compact License Key
+          <pre id="license-key"></pre>
+        </label>
+      </div>
+    </form>
 
-      try {
-        const issuedAt = form.issued_at.value.trim() || new Date(Math.floor(Date.now() / 1000) * 1000).toISOString();
-        const payload = {
-          app_pkg_id: form.app_pkg_id.value.trim(),
-          issued_at: issuedAt,
-          expire_at: form.expire_at.value.trim(),
-        };
+    <script>
+      const form = document.getElementById("issuer-form");
+      const errorNode = document.getElementById("error");
+      const payloadNode = document.getElementById("payload-json");
+      const licenseNode = document.getElementById("license-key");
 
-        const signingCert = normalizeDigest(form.signing_cert_sha256.value);
-        if (signingCert) payload.signing_cert_sha256 = signingCert;
+      function canonicalize(value) {
+        if (value === null) return "null";
+        if (Array.isArray(value)) {
+          return `[${value.map(canonicalize).join(",")}]`;
+        }
+        if (typeof value === "object") {
+          return `{${Object.keys(value)
+            .sort()
+            .map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`)
+            .join(",")}}`;
+        }
+        if (typeof value === "string") return JSON.stringify(value);
+        if (typeof value === "number" || typeof value === "boolean")
+          return String(value);
+        return JSON.stringify(String(value));
+      }
 
-        const features = parseFeatures(form.features.value);
-        if (features) payload.features = features;
+      function pemToArrayBuffer(pem) {
+        const base64 = pem
+          .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+          .replace(/-----END PRIVATE KEY-----/g, "")
+          .replace(/\s+/g, "");
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+      }
 
-        const payloadJson = canonicalize(payload);
-        const { payloadBase64Url, signatureBase64Url } = await signEd25519(
-          payloadJson,
-          form.private_key_pem.value,
+      function base64UrlEncode(bytes) {
+        let binary = "";
+        const array =
+          bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+        for (const byte of array) binary += String.fromCharCode(byte);
+        return btoa(binary)
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/g, "");
+      }
+
+      async function signEd25519(payloadJson, pem) {
+        const pkcs8 = pemToArrayBuffer(pem);
+        const privateKey = await crypto.subtle.importKey(
+          "pkcs8",
+          pkcs8,
+          { name: "Ed25519" },
+          false,
+          ["sign"],
         );
-
-        payloadNode.textContent = JSON.stringify(payload, null, 2);
-        licenseNode.textContent = `${payloadBase64Url}.${signatureBase64Url}`;
-      } catch (error) {
-        errorNode.textContent = error instanceof Error ? error.message : String(error);
+        const payloadBytes = new TextEncoder().encode(payloadJson);
+        const signature = await crypto.subtle.sign(
+          "Ed25519",
+          privateKey,
+          payloadBytes,
+        );
+        return {
+          payloadBase64Url: base64UrlEncode(payloadBytes),
+          signatureBase64Url: base64UrlEncode(signature),
+        };
       }
-    });
-  </script>
-</body>
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        errorNode.textContent = "";
+        payloadNode.textContent = "";
+        licenseNode.textContent = "";
+
+        try {
+          const issuedAt =
+            form.issued_at.value.trim() ||
+            new Date(Math.floor(Date.now() / 1000) * 1000).toISOString();
+          const payload = {
+            app_pkg_id: form.app_pkg_id.value.trim(),
+            issued_at: issuedAt,
+            expire_at: form.expire_at.value.trim(),
+          };
+          const payloadJson = canonicalize(payload);
+          const { payloadBase64Url, signatureBase64Url } = await signEd25519(
+            payloadJson,
+            form.private_key_pem.value,
+          );
+
+          payloadNode.textContent = JSON.stringify(payload, null, 2);
+          licenseNode.textContent = `${payloadBase64Url}.${signatureBase64Url}`;
+        } catch (error) {
+          errorNode.textContent =
+            error instanceof Error ? error.message : String(error);
+        }
+      });
+    </script>
+  </body>
 </html>
