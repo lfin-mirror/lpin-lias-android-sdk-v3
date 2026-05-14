@@ -3,8 +3,6 @@ package io.lpin.android.sdk.face
 import android.content.Context
 import io.lpin.android.sdk.face.FaceAuthenticatorManager.Type.*
 import io.lpin.android.sdk.face.database.UserDatabase
-import io.lpin.android.sdk.licensing.LiasLicensedFeature
-import io.lpin.android.sdk.licensing.LiasLicenseGate
 import io.lpin.android.sdk.face.database.UserEntity
 
 class FaceAuthenticatorManager(builder: Builder) {
@@ -176,7 +174,6 @@ class FaceAuthenticatorManager(builder: Builder) {
 
     class Builder(val context: Context) {
         fun build(): FaceAuthenticatorManager {
-            LiasLicenseGate.requireFeature(context.applicationContext, LiasLicensedFeature.FACE)
             return FaceAuthenticatorManager(this)
         }
     }
